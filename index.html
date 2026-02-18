@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LoanCalc — кредитный калькулятор</title>
+  <meta name="description" content="Кредитный калькулятор: аннуитетный платеж, переплата, общая сумма, график и таблица." />
+
+  <style>
+    :root{
+      --bg:#07101a;
+      --panel: rgba(255,255,255,0.06);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.68);
+      --line: rgba(255,255,255,0.12);
+      --accent:#60a5fa;
+      --accent2:#34d399;
+      --warn:#fb7185;
+      --shadow: 0 18px 60px rgba(0,0,0,0.40);
+      --radius: 18px;
+      --max: 1120px;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    *{ box-sizing:border-box; }
+    html, body{ height:100%; }
+    body{
+      margin:0;
+      font-family:var(--sans);
+      color:var(--text);
+      background:
+        radial-gradient(1000px 540px at 80% -10%, rgba(96,165,250,0.20), transparent 60%),
+        radial-gradient(900px 520px at 10% 10%, rgba(52,211,153,0.14), transparent 55%),
+        linear-gradient(180deg, #050812 0%, #07101a 40%, #050812 100%);
+      line-height:1.5;
+    }
+    a{ color:inherit; text-decoration:none; }
+    .container{ max-width:var(--max); margin:0 auto; padding:0 18px; }
+
+    header{
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: blur(10px);
+      background: rgba(5,8,18,0.60);
+      border-bottom:1px solid var(--line);
+    }
+    .nav{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; padding:12px 0;
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      font-weight:900; letter-spacing:0.2px;
+    }
+    .logo{
+      width:36px; height:36px; border-radius:12px;
+      border:1px solid rgba(255,255,255,0.18);
+      background:
+        radial-gradient(12px 12px at 30% 30%, rgba(255,255,255,0.9), rgba(255,255,255,0) 60%),
+        linear-gradient(135deg, rgba(96,165,250,0.95), rgba(52,211,153,0.90));
+      box-shadow: 0 16px 45px rgba(96,165,250,0.14);
+    }
+    .hint-top{
+      color: var(--muted);
+      font-weight: 800;
+      font-size: 13px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.78);
+      font-weight:900;
+      font-size:12px;
+      font-family: var(--mono);
+      white-space:nowrap;
+    }
+
+    main{ padding: 18px 0 30px; }
+    .hero{
+      padding: 10px 0 16px;
+    }
+    h1{
+      margin: 0;
+      font-size: 30px;
+      letter-spacing: -0.6px;
+      line-height: 1.1;
+    }
+    .sub{
+      margin: 10px 0 0;
+      color: var(--muted);
+      max-width: 75ch;
+      font-size: 14px;
+    }
+
+    .grid{
+      margin-top: 16px;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+    .card{
+      border:1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.05);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: 0 18px 55px rgba(0,0,0,0.25);
+    }
+    .card h2{
+      margin: 0 0 10px;
+      font-size: 16px;
+      letter-spacing: -0.2px;
+    }
+    .muted{ color: var(--muted); }
+
+    label{
+      display:grid;
+      gap: 6px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.78);
+      font-weight: 900;
+    }
+    input, select{
+      width:100%;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.22);
+      color: var(--text);
+      padding: 12px 12px;
+      outline:none;
+      font-size: 14px;
+    }
+    input:focus, select:focus{
+      border-color: rgba(96,165,250,0.50);
+      box-shadow: 0 0 0 4px rgba(96,165,250,0.08);
+    }
+
+    .row{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .btns{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+      margin-top: 12px;
+    }
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      padding:10px 14px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      font-weight: 900;
+      font-size: 14px;
+      cursor:pointer;
+      transition: transform 0.08s ease, background 0.2s ease, border-color 0.2s ease;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .btn:hover{
+      background: rgba(255,255,255,0.10);
+      border-color: rgba(255,255,255,0.24);
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn.primary{
+      border-color: rgba(96,165,250,0.35);
+      background: linear-gradient(135deg, rgba(96,165,250,0.18), rgba(52,211,153,0.10));
+      box-shadow: 0 18px 60px rgba(96,165,250,0.08);
+    }
+    .btn.primary:hover{
+      border-color: rgba(96,165,250,0.55);
+      background: linear-gradient(135deg, rgba(96,165,250,0.22), rgba(52,211,153,0.14));
+    }
+    .btn.danger{
+      border-color: rgba(251,113,133,0.35);
+      background: rgba(251,113,133,0.10);
+    }
+    .btn.danger:hover{
+      border-color: rgba(251,113,133,0.55);
+      background: rgba(251,113,133,0.14);
+    }
+
+    .kpis{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .kpi{
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.20);
+    }
+    .kpi .label{
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .kpi .value{
+      margin-top: 4px;
+      font-family: var(--mono);
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: -0.2px;
+    }
+
+    .chart-wrap{
+      margin-top: 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.18);
+      padding: 12px;
+      overflow:hidden;
+    }
+    canvas{ width:100%; height:220px; display:block; }
+
+    table{
+      width:100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      overflow:hidden;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,0.12);
+    }
+    th, td{
+      padding: 10px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+      text-align: left;
+      font-size: 13px;
+      color: rgba(255,255,255,0.84);
+    }
+    th{
+      color: rgba(255,255,255,0.92);
+      background: rgba(255,255,255,0.04);
+      font-weight: 900;
+    }
+    tr:last-child td{ border-bottom: 0; }
+    .right{ text-align:right; font-family: var(--mono); }
+    .small{ font-size: 12px; color: var(--muted); }
+
+    .status{
+      display:none;
+      margin-top: 10px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.05);
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .status.err{
+      display:block;
+      border-color: rgba(251,113,133,0.42);
+      background: rgba(251,113,133,0.12);
+      color: rgba(255,255,255,0.92);
+    }
+
+    footer{
+      padding: 18px 0 34px;
+      border-top:1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .foot{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      align-items:flex-start;
+      justify-content:space-between;
+    }
+
+    @media (min-width: 880px){
+      h1{ font-size: 40px; }
+      .grid{ grid-template-columns: 0.9fr 1.1fr; }
+      .row{ grid-template-columns: 1fr 1fr; }
+      .kpis{ grid-template-columns: 1fr 1fr; }
+      canvas{ height: 260px; }
+      .foot{ flex-direction: row; align-items:center; }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="container">
+      <div class="nav">
+        <a class="brand" href="#top" aria-label="LoanCalc">
+          <span class="logo" aria-hidden="true"></span>
+          <span>LoanCalc</span>
+        </a>
+        <div class="hint-top">
+          <span class="pill">annuity</span>
+          <span class="pill">vanilla JS</span>
+          <span class="pill">responsive</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <div class="container">
+      <section class="hero">
+        <h1>Кредитный калькулятор</h1>
+        <p class="sub">
+          Рассчитывает <b>аннуитетный платёж</b>, переплату и общую сумму. Строит диаграмму структуры выплат
+          и показывает первые 12 месяцев графика. Настройки сохраняются в браузере (LocalStorage).
+        </p>
+      </section>
+
+      <div class="grid">
+        <section class="card" aria-label="Ввод данных">
+          <h2>Параметры</h2>
+
+          <div class="row">
+            <label>
+              Сумма кредита
+              <input id="amount" inputmode="numeric" autocomplete="off" placeholder="Напр. 50 000 000" />
+              <span class="small">Можно вводить с пробелами. Валюта условная (UZS/₽/$).</span>
+            </label>
+
+            <label>
+              Срок (месяцев)
+              <input id="months" type="number" min="1" step="1" placeholder="Напр. 36" />
+              <span class="small">Например: 12, 24, 36, 60…</span>
+            </label>
+          </div>
+
+          <div class="row" style="margin-top:10px">
+            <label>
+              Процентная ставка (годовых, %)
+              <input id="rate" type="number" min="0" step="0.01" placeholder="Напр. 24" />
+              <span class="small">Годовая ставка. Расчёт по месячной = rate/12.</span>
+            </label>
+
+            <label>
+              Валюта (подпись)
+              <select id="currency">
+                <option value="UZS">UZS</option>
+                <option value="₽">₽</option>
+                <option value="$">$</option>
+                <option value="€">€</option>
+              </select>
+              <span class="small">Влияет только на отображение чисел.</span>
+            </label>
+          </div>
+
+          <div class="btns">
+            <button class="btn primary" id="calcBtn" type="button">Рассчитать</button>
+            <button class="btn" id="saveBtn" type="button">Сохранить</button>
+            <button class="btn danger" id="resetBtn" type="button">Сброс</button>
+          </div>
+
+          <div class="status err" id="status" role="status" aria-live="polite"></div>
+        </section>
+
+        <section class="card" aria-label="Результаты">
+          <h2>Результаты</h2>
+
+          <div class="kpis">
+            <div class="kpi">
+              <div class="label">Ежемесячный платёж</div>
+              <div class="value" id="pmt">—</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Переплата</div>
+              <div class="value" id="overpay">—</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Итого к выплате</div>
+              <div class="value" id="total">—</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Проценты в платеже (1-й мес.)</div>
+              <div class="value" id="firstInterest">—</div>
+            </div>
+          </div>
+
+          <div class="chart-wrap" aria-label="Диаграмма">
+            <div class="small">Диаграмма: доля процентов и тела кредита в общей выплате</div>
+            <canvas id="chart" width="900" height="320"></canvas>
+          </div>
+
+          <h2 style="margin-top:14px">График (первые 12 месяцев)</h2>
+          <div class="small">Показывает платёж, проценты, тело, остаток.</div>
+
+          <div style="overflow:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Месяц</th>
+                  <th class="right">Платёж</th>
+                  <th class="right">Проценты</th>
+                  <th class="right">Тело</th>
+                  <th class="right">Остаток</th>
+                </tr>
+              </thead>
+              <tbody id="scheduleBody">
+                <tr><td colspan="5" class="muted">Введите параметры и нажмите “Рассчитать”.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="foot">
+        <div>© <span id="year"></span> LoanCalc. Портфолио-демо проект.</div>
+        <div class="small">Математика: аннуитет. Для реальных банковских расчётов возможны отличия из-за комиссий/округлений.</div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // helpers
+    const $ = (id) => document.getElementById(id);
+
+    const elAmount = $("amount");
+    const elMonths = $("months");
+    const elRate = $("rate");
+    const elCurrency = $("currency");
+
+    const elPmt = $("pmt");
+    const elOverpay = $("overpay");
+    const elTotal = $("total");
+    const elFirstInterest = $("firstInterest");
+    const elBody = $("scheduleBody");
+    const elStatus = $("status");
+
+    const canvas = $("chart");
+    const ctx = canvas.getContext("2d");
+
+    document.getElementById("year").textContent = new Date().getFullYear();
+
+    function showError(msg){
+      elStatus.style.display = "block";
+      elStatus.textContent = msg;
+    }
+    function clearError(){
+      elStatus.style.display = "none";
+      elStatus.textContent = "";
+    }
+
+    function parseNumberSmart(str){
+      // allow spaces, commas
+      const cleaned = String(str || "")
+        .replace(/\s+/g, "")
+        .replace(/,/g, ".");
+      const num = Number(cleaned);
+      return Number.isFinite(num) ? num : NaN;
+    }
+
+    function formatMoney(x, cur){
+      if (!Number.isFinite(x)) return "—";
+      const rounded = Math.round(x);
+      // group thousands with spaces
+      const s = String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+      return cur ? (s + " " + cur) : s;
+    }
+
+    function annuityPayment(P, months, annualRate){
+      // monthly rate
+      const r = (annualRate / 100) / 12;
+      if (r === 0) return P / months;
+      const pow = Math.pow(1 + r, months);
+      return P * (r * pow) / (pow - 1);
+    }
+
+    function buildSchedule(P, months, annualRate){
+      const r = (annualRate / 100) / 12;
+      const pmt = annuityPayment(P, months, annualRate);
+
+      let balance = P;
+      const rows = [];
+
+      for (let m = 1; m <= months; m++){
+        const interest = r === 0 ? 0 : balance * r;
+        const principal = pmt - interest;
+        balance = balance - principal;
+
+        // fix floating residue at end
+        if (m === months && Math.abs(balance) < 0.01) balance = 0;
+
+        rows.push({
+          month: m,
+          payment: pmt,
+          interest,
+          principal,
+          balance: Math.max(balance, 0)
+        });
+      }
+      return { pmt, rows };
+    }
+
+    function drawDonut(percentInterest){
+      // percentInterest: 0..1
+      const w = canvas.width;
+      const h = canvas.height;
+      const cx = w/2, cy = h/2;
+      const rOuter = Math.min(w,h) * 0.34;
+      const rInner = rOuter * 0.62;
+
+      ctx.clearRect(0,0,w,h);
+
+      // background ring
+      ctx.beginPath();
+      ctx.arc(cx, cy, rOuter, 0, Math.PI*2);
+      ctx.arc(cx, cy, rInner, 0, Math.PI*2, true);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(255,255,255,0.08)";
+      ctx.fill();
+
+      const start = -Math.PI/2;
+      const angle = Math.PI*2 * percentInterest;
+
+      // interest slice
+      ctx.beginPath();
+      ctx.arc(cx, cy, rOuter, start, start + angle);
+      ctx.arc(cx, cy, rInner, start + angle, start, true);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(96,165,250,0.85)";
+      ctx.fill();
+
+      // principal slice
+      ctx.beginPath();
+      ctx.arc(cx, cy, rOuter, start + angle, start + Math.PI*2);
+      ctx.arc(cx, cy, rInner, start + Math.PI*2, start + angle, true);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(52,211,153,0.85)";
+      ctx.fill();
+
+      // center text
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.font = "900 26px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+      const p = Math.round(percentInterest * 100);
+      const txt = p + "%";
+      const tw = ctx.measureText(txt).width;
+      ctx.fillText(txt, cx - tw/2, cy + 10);
+
+      ctx.font = "800 13px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
+      ctx.fillStyle = "rgba(255,255,255,0.68)";
+      const t2 = "проценты";
+      const t2w = ctx.measureText(t2).width;
+      ctx.fillText(t2, cx - t2w/2, cy + 34);
+
+      // legend
+      ctx.font = "900 13px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
+      ctx.fillStyle = "rgba(255,255,255,0.78)";
+      ctx.fillText("Проценты", 18, 26);
+      ctx.fillText("Тело кредита", 18, 52);
+
+      ctx.fillStyle = "rgba(96,165,250,0.85)";
+      ctx.fillRect(120, 16, 12, 12);
+      ctx.fillStyle = "rgba(52,211,153,0.85)";
+      ctx.fillRect(120, 42, 12, 12);
+    }
+
+    function renderTable(rows, cur){
+      const first12 = rows.slice(0, 12);
+      elBody.innerHTML = "";
+      first12.forEach(r => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${r.month}</td>
+          <td class="right">${formatMoney(r.payment, cur)}</td>
+          <td class="right">${formatMoney(r.interest, cur)}</td>
+          <td class="right">${formatMoney(r.principal, cur)}</td>
+          <td class="right">${formatMoney(r.balance, cur)}</td>
+        `;
+        elBody.appendChild(tr);
+      });
+    }
+
+    function calculate(){
+      clearError();
+
+      const P = parseNumberSmart(elAmount.value);
+      const months = Number(elMonths.value);
+      const rate = Number(elRate.value);
+      const cur = elCurrency.value;
+
+      if (!Number.isFinite(P) || P <= 0) return showError("Введите корректную сумму кредита.");
+      if (!Number.isFinite(months) || months <= 0) return showError("Введите корректный срок в месяцах.");
+      if (!Number.isFinite(rate) || rate < 0) return showError("Введите корректную процентную ставку (>= 0).");
+
+      const { pmt, rows } = buildSchedule(P, months, rate);
+
+      const total = pmt * months;
+      const overpay = total - P;
+
+      // first month interest
+      const firstInterest = rows[0]?.interest ?? 0;
+
+      elPmt.textContent = formatMoney(pmt, cur);
+      elTotal.textContent = formatMoney(total, cur);
+      elOverpay.textContent = formatMoney(overpay, cur);
+      elFirstInterest.textContent = formatMoney(firstInterest, cur);
+
+      renderTable(rows, cur);
+
+      const percentInterest = total === 0 ? 0 : (overpay / total);
+      drawDonut(Math.max(0, Math.min(1, percentInterest)));
+
+      return { P, months, rate, cur };
+    }
+
+    function saveSettings(){
+      const payload = {
+        amount: elAmount.value,
+        months: elMonths.value,
+        rate: elRate.value,
+        currency: elCurrency.value
+      };
+      localStorage.setItem("loancalc_settings", JSON.stringify(payload));
+    }
+
+    function loadSettings(){
+      try{
+        const raw = localStorage.getItem("loancalc_settings");
+        if (!raw) return;
+        const s = JSON.parse(raw);
+        if (s && typeof s === "object"){
+          if (s.amount != null) elAmount.value = String(s.amount);
+          if (s.months != null) elMonths.value = String(s.months);
+          if (s.rate != null) elRate.value = String(s.rate);
+          if (s.currency) elCurrency.value = String(s.currency);
+        }
+      }catch(_){}
+    }
+
+    function resetAll(){
+      elAmount.value = "";
+      elMonths.value = "";
+      elRate.value = "";
+      elCurrency.value = "UZS";
+      localStorage.removeItem("loancalc_settings");
+
+      elPmt.textContent = "—";
+      elOverpay.textContent = "—";
+      elTotal.textContent = "—";
+      elFirstInterest.textContent = "—";
+      elBody.innerHTML = `<tr><td colspan="5" class="muted">Введите параметры и нажмите “Рассчитать”.</td></tr>`;
+      clearError();
+      drawDonut(0);
+    }
+
+    // nice input: add spaces while typing in amount
+    elAmount.addEventListener("input", () => {
+      const digits = elAmount.value.replace(/[^\d]/g, "");
+      if (!digits) { elAmount.value = ""; return; }
+      elAmount.value = digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    });
+
+    document.getElementById("calcBtn").addEventListener("click", () => calculate());
+    document.getElementById("saveBtn").addEventListener("click", () => {
+      const ok = calculate(); // ensure valid before saving
+      if (ok) saveSettings();
+    });
+    document.getElementById("resetBtn").addEventListener("click", () => resetAll());
+
+    // init
+    loadSettings();
+    drawDonut(0);
+    // optional auto-calc if settings exist
+    if (elAmount.value || elMonths.value || elRate.value) calculate();
+  </script>
+</body>
+</html>
